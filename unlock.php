@@ -1,0 +1,1 @@
+<?php session_start(); session_destroy(); echo "Unlocked! Close this tab and login again."; ?>

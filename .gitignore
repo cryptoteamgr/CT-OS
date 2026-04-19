@@ -1,0 +1,43 @@
+# Database & Security
+db_config.php
+
+# Logs
+*.log
+*.txt
+scanner_log.txt
+zscore_sync_log.txt
+cron_log.txt
+monitor_log.txt
+aggregator_log.txt
+journal_log.txt
+sync_log.txt
+cointegration_log.txt
+checker_log.txt
+debug_close.log
+test_write.log
+sync_z_log.txt
+
+# Cache & Temporary
+*.cache
+*.json
+prices_cache.json
+exchange_info_cache.json
+*.lock
+*.tmp
+
+# IDE & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Vendor
+vendor/
+
+# Backup files
+*.bak
+*.backup
+*.old
