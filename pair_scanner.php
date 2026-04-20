@@ -462,7 +462,8 @@ while (time() - $script_start < $max_execution_time) {
                             $msg = "🚀 <b>NEW PAIR POSITION OPENED</b>\n";
                             $msg .= "📊 Pair: <code>{$p['asset_a']} / {$p['asset_b']}</code>\n";
                             $msg .= "🎯 Entry Z-Score: <b>" . round($z_score, 2) . "</b>\n";
-                            $msg .= "⚖️ Hedge Ratio (Beta): <b>" . round($beta, 3) . "</b>\n"; // Η ΝΕΑ ΓΡΑΜΜΗ ΕΔΩ
+                            $msg .= "⚖️ Hedge Ratio (Beta): <b>" . round($beta, 3) . "</b>\n";
+                            $msg .= "⚖️ Leverage: <b>{$user_lev}x</b>\n";
                             $msg .= "⛽ Entry Fee: <b>$" . number_format($total_fees, 4) . " USDT</b>\n";
                             $msg .= "👤 User: {$username} | {$mode_label}\n";
                             $msg .= "------------------------\n";

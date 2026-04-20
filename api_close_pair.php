@@ -69,10 +69,12 @@ try {
     
     $posA = binance_get_position($fK, $fS, $symbolA, $mode);
     $qtyA = abs(floatval($posA['quantity'] ?? 0));
+    $posSideA = $posA['positionSide'] ?? 'BOTH';
     $posB = binance_get_position($fK, $fS, $symbolB, $mode);
     $qtyB = abs(floatval($posB['quantity'] ?? 0));
+    $posSideB = $posB['positionSide'] ?? 'BOTH';
 
-    file_put_contents(__DIR__ . '/debug_close.log', date('Y-m-d H:i:s') . " Trade $pair_id: Positions - QtyA=$qtyA, QtyB=$qtyB\n", FILE_APPEND);
+    file_put_contents(__DIR__ . '/debug_close.log', date('Y-m-d H:i:s') . " Trade $pair_id: Positions - QtyA=$qtyA, QtyB=$qtyB, PosSideA=$posSideA, PosSideB=$posSideB\n", FILE_APPEND);
 
     if ($qtyA <= 0 && $qtyB <= 0) {
         $pdo->prepare("UPDATE active_pairs SET status = 'CLOSED', closed_at = NOW(), notes = 'Sync Close' WHERE id = ?")->execute([$pair_id]);
@@ -99,12 +101,12 @@ try {
     file_put_contents(__DIR__ . '/debug_close.log', date('Y-m-d H:i:s') . " Trade $pair_id: About to execute orders. SideA=$sideA, SideB=$sideB, QtyA=$qtyA, QtyB=$qtyB\n", FILE_APPEND);
 
     // Execution
-    $resA = binance_market_order($fK, $fS, $symbolA, $sideA, 0, $qtyA, true, ($pair['side_a'] === 'BUY' ? 'LONG' : 'SHORT'), $mode, $user_id, 'MANUAL_EXIT');
-    
+    $resA = binance_market_order($fK, $fS, $symbolA, $sideA, 0, $qtyA, true, $posSideA, $mode, $user_id, 'MANUAL_EXIT');
+
     file_put_contents(__DIR__ . '/debug_close.log', date('Y-m-d H:i:s') . " Trade $pair_id: Order A executed. Success=" . ($resA['success'] ? 'true' : 'false') . "\n", FILE_APPEND);
-    
+
     usleep(250000);
-    $resB = binance_market_order($fK, $fS, $symbolB, $sideB, 0, $qtyB, true, ($pair['side_b'] === 'BUY' ? 'LONG' : 'SHORT'), $mode, $user_id, 'MANUAL_EXIT');
+    $resB = binance_market_order($fK, $fS, $symbolB, $sideB, 0, $qtyB, true, $posSideB, $mode, $user_id, 'MANUAL_EXIT');
     
     file_put_contents(__DIR__ . '/debug_close.log', date('Y-m-d H:i:s') . " Trade $pair_id: Order B executed. Success=" . ($resB['success'] ? 'true' : 'false') . "\n", FILE_APPEND);
 
@@ -166,15 +168,16 @@ try {
             'MANUAL_EXIT'
         ]);
 
-        // 3. TELEGRAM NOTIFICATION (4-WAY FEES)
+        // 3. TELEGRAM NOTIFICATION
         $emoji = ($netPnl >= 0) ? "✅" : "🔻";
         $mode_label = ($mode === 'LIVE') ? "🔵 <b>LIVE</b>" : "🟡 <b>DEMO</b>";
         
         $msg = "👤 {$emoji} <b>MANUAL EXIT COMPLETED</b>\n";
         $msg .= "📊 Pair: <code>{$pair['asset_a']}/{$pair['asset_b']}</code>\n";
         $msg .= "🏁 Reason: <b>USER INTERVENTION</b>\n";
+        $msg .= "⚖️ Leverage: <b>{$user_lev}x</b>\n";
         $msg .= "💰 GROSS PnL: <b>$" . number_format($grossPnl, 2) . "</b>\n";
-        $msg .= "⛽ Total Fees (4x): <code>$" . number_format($totalComm, 4) . " USDT</code>\n";
+        $msg .= "⛽ Total Fees: <code>$" . number_format($totalComm, 4) . " USDT</code>\n";
         $msg .= "💵 <b>NET PnL: " . ($netPnl >= 0 ? "+" : "") . "$" . number_format($netPnl, 2) . "</b>\n";
         $msg .= "------------------------\n";
         $msg .= "👤 User: $username | {$mode_label}";

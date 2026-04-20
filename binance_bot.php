@@ -20,20 +20,39 @@ function getStatusOnly($pdo, $user_id, $type) {
 
     $key = decrypt_data($api['api_key']);
     $secret = decrypt_data($api['api_secret']);
+    
+    // DEBUG: Check if decryption worked (valid API keys are alphanumeric, typically 64 chars)
+    $key_is_valid = ctype_alnum($key) && strlen($key) >= 60 && strlen($key) <= 70;
+    $secret_is_valid = ctype_alnum($secret) && strlen($secret) >= 60 && strlen($secret) <= 70;
+    
+    // DEBUG: Log key length (not the key itself for security)
+    error_log("BINANCE_BOT DEBUG [$type]: Key length=" . strlen($key) . ", Secret length=" . strlen($secret));
+    error_log("BINANCE_BOT DEBUG [$type]: Key valid=$key_is_valid, Secret valid=$secret_is_valid");
+    
     $base_url = ($type === 'DEMO') ? "https://testnet.binancefuture.com" : "https://fapi.binance.com";
 
     $timestamp = number_format(round(microtime(true) * 1000), 0, '.', '');
     $query = "timestamp=" . $timestamp;
     $signature = hash_hmac('sha256', $query, $secret);
     
-    $ch = curl_init($base_url . "/fapi/v2/account?" . $query . "&signature=" . $signature);
+    $full_url = $base_url . "/fapi/v2/account?" . $query . "&signature=" . $signature;
+    error_log("BINANCE_BOT DEBUG [$type]: URL=" . $full_url);
+    
+    $ch = curl_init($full_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['X-MBX-APIKEY: ' . $key]);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10); // Αυξημένο timeout για σταθερότητα
     $res = curl_exec($ch);
-    $data = json_decode($res, true);
+    $curl_error = curl_error($ch);
+    $curl_errno = curl_errno($ch);
+    
+    // DEBUG: Log curl details
+    error_log("BINANCE_BOT DEBUG [$type]: Curl error=$curl_error, Curl errno=$curl_errno, Response length=" . strlen($res));
+    
     curl_close($ch);
+    
+    $data = json_decode($res, true);
 
     if (isset($data['totalMarginBalance'])) {
         return [
@@ -46,7 +65,26 @@ function getStatusOnly($pdo, $user_id, $type) {
         ];
     }
     
-    return ['status' => 'AUTH_ERROR', 'balance' => '0.00', 'pnl' => '0.00', 'color' => 'red', 'bg' => 'bg-red-500/10', 'border' => 'border-red-500/20'];
+    // DEBUG: Return error message for display
+    $error_msg = isset($data['msg']) ? $data['msg'] : (isset($data['code']) ? "Code: " . $data['code'] : "Unknown error");
+    $error_debug = json_encode($data);
+    $curl_debug = "Curl error: $curl_error, Curl errno: $curl_errno, Response length: " . strlen($res);
+    $key_debug = "Key length: " . strlen($key) . ", Secret length: " . strlen($secret);
+    $decrypt_debug = "Key valid: " . ($key_is_valid ? 'YES' : 'NO') . ", Secret valid: " . ($secret_is_valid ? 'YES' : 'NO');
+    
+    return [
+        'status' => 'AUTH_ERROR', 
+        'balance' => '0.00', 
+        'pnl' => '0.00', 
+        'color' => 'red', 
+        'bg' => 'bg-red-500/10', 
+        'border' => 'border-red-500/20',
+        'error_msg' => $error_msg,
+        'error_debug' => $error_debug,
+        'curl_debug' => $curl_debug,
+        'key_debug' => $key_debug,
+        'decrypt_debug' => $decrypt_debug
+    ];
 }
 
 $live = getStatusOnly($pdo, $user_id, 'LIVE');
@@ -147,6 +185,23 @@ $demo = getStatusOnly($pdo, $user_id, 'DEMO');
                         </p>
                     </div>
                 </div>
+                
+                <?php if (isset($demo['error_msg'])): ?>
+                <div class="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <p class="text-[10px] font-bold text-red-400 uppercase mb-1">Error:</p>
+                    <p class="text-xs text-red-300 mono"><?= htmlspecialchars($demo['error_msg']) ?></p>
+                    <p class="text-[9px] text-red-500/70 mt-2 mono"><?= htmlspecialchars($demo['error_debug']) ?></p>
+                    <?php if (isset($demo['curl_debug'])): ?>
+                    <p class="text-[9px] text-red-500/70 mt-2 mono"><?= htmlspecialchars($demo['curl_debug']) ?></p>
+                    <?php endif; ?>
+                    <?php if (isset($demo['key_debug'])): ?>
+                    <p class="text-[9px] text-red-500/70 mt-2 mono"><?= htmlspecialchars($demo['key_debug']) ?></p>
+                    <?php endif; ?>
+                    <?php if (isset($demo['decrypt_debug'])): ?>
+                    <p class="text-[9px] text-red-500/70 mt-2 mono"><?= htmlspecialchars($demo['decrypt_debug']) ?></p>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
             </div>
 
         </div>

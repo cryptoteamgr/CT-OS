@@ -562,7 +562,15 @@ return `
     <td class="py-6 text-center text-slate-500 text-[10px] font-bold">${pos.last_seen}</td>
     <td class="py-6 text-center text-slate-400">${pos.entry_z_score}</td>
     <td class="py-6 text-center text-blue-400 font-black">${pos.current_z || '---'}</td>
-    <td class="py-6 text-right font-black" style="color: ${pnlColor}">${parseFloat(pos.pnl).toFixed(2)}$</td>
+    <td class="py-6 text-right">
+        <div class="flex flex-col items-end">
+            <span class="font-black text-base" style="color: ${pnlColor}">${parseFloat(pos.pnl).toFixed(2)}$</span>
+            <div class="flex gap-2 mt-1">
+                <span class="text-[10px]" style="color: ${parseFloat(pos.binance_pnl_a || 0) >= 0 ? '#22c55e' : '#ef4444'}">${pos.asset_a}USDT: ${parseFloat(pos.binance_pnl_a || 0).toFixed(2)}$</span>
+                <span class="text-[10px]" style="color: ${parseFloat(pos.binance_pnl_b || 0) >= 0 ? '#22c55e' : '#ef4444'}">${pos.asset_b}USDT: ${parseFloat(pos.binance_pnl_b || 0).toFixed(2)}$</span>
+            </div>
+        </div>
+    </td>
     <td class="py-6 text-right pr-6">
         <button onclick="closePosition(${pos.id})" class="bg-red-600 text-white text-[10px] px-4 py-1 rounded font-bold shadow-lg">CLOSE</button>
     </td>

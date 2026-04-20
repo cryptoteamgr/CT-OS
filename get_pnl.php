@@ -38,7 +38,7 @@ try {
     $stmtPos = $pdo->prepare("
         SELECT id, asset_a, asset_b, side_a, side_b, quantity_a, quantity_b, 
                entry_price_a, entry_price_b, entry_z_score, beta_used, status, 
-               commission_a, commission_b, leverage_used
+               commission_a, commission_b, leverage_used, binance_pnl_a, binance_pnl_b
         FROM active_pairs 
         WHERE user_id = ? AND status = 'OPEN' AND mode = ?
     ");
@@ -58,19 +58,40 @@ try {
         $currentPriceA = isset($ticker_prices[$symA]) ? (float)$ticker_prices[$symA] : (float)$pos['entry_price_a'];
         $currentPriceB = isset($ticker_prices[$symB]) ? (float)$ticker_prices[$symB] : (float)$pos['entry_price_b'];
 
-        // --- REAL-TIME PNL CALCULATION ---
-        $leverage_used = (int)($pos['leverage_used'] ?? 5);
-        $pnlA = (strtoupper($pos['side_a']) === 'BUY') 
-            ? ($currentPriceA - (float)$pos['entry_price_a']) * (float)$pos['quantity_a']
-            : ((float)$pos['entry_price_a'] - $currentPriceA) * (float)$pos['quantity_a'];
-
-        $pnlB = (strtoupper($pos['side_b']) === 'BUY') 
-            ? ($currentPriceB - (float)$pos['entry_price_b']) * (float)$pos['quantity_b']
-            : ((float)$pos['entry_price_b'] - $currentPriceB) * (float)$pos['quantity_b'];
+        // --- LIVE BINANCE PNL FETCH (Real-time on-demand) ---
+        $stmtKeys = $pdo->prepare("SELECT a.api_key, a.api_secret FROM api_keys a JOIN users u ON a.user_id = u.id WHERE u.id = ? AND a.account_type = u.bot_mode AND a.is_active = 1 LIMIT 1");
+        $stmtKeys->execute([$user_id]);
+        $keys = $stmtKeys->fetch(PDO::FETCH_ASSOC);
         
-        // Divide by leverage since quantities are already leverage-multiplied
-        $pnlA = $pnlA / $leverage_used;
-        $pnlB = $pnlB / $leverage_used;
+        if ($keys) {
+            $k = decrypt_data($keys['api_key']);
+            $s = decrypt_data($keys['api_secret']);
+            
+            $posA = binance_get_position($k, $s, $symA, $mode);
+            $posB = binance_get_position($k, $s, $symB, $mode);
+            
+            $pnlA = $posA['unrealizedPnl'] ?? 0;
+            $pnlB = $posB['unrealizedPnl'] ?? 0;
+            
+            // DEMO mode fallback: Binance DEMO returns unrealizedPnl = 0, use local calculation
+            if ($mode === 'DEMO' && $pnlA == 0 && $pnlB == 0) {
+                $pnlA = (strtoupper($pos['side_a']) === 'BUY') 
+                    ? ($currentPriceA - (float)$pos['entry_price_a']) * (float)$pos['quantity_a']
+                    : ((float)$pos['entry_price_a'] - $currentPriceA) * (float)$pos['quantity_a'];
+                
+                $pnlB = (strtoupper($pos['side_b']) === 'BUY') 
+                    ? ($currentPriceB - (float)$pos['entry_price_b']) * (float)$pos['quantity_b']
+                    : ((float)$pos['entry_price_b'] - $currentPriceB) * (float)$pos['quantity_b'];
+            }
+            
+            // Update SQL with fresh PnL
+            $updFresh = $pdo->prepare("UPDATE active_pairs SET binance_pnl_a = ?, binance_pnl_b = ? WHERE id = ?");
+            $updFresh->execute([$pnlA, $pnlB, $pos['id']]);
+        } else {
+            // Fallback to SQL values if keys not available
+            $pnlA = floatval($pos['binance_pnl_a'] ?? 0);
+            $pnlB = floatval($pos['binance_pnl_b'] ?? 0);
+        }
 
         // Αφαίρεση προμηθειών από το PnL της θέσης
         $entryFees = (float)($pos['commission_a'] ?? 0) + (float)($pos['commission_b'] ?? 0);
@@ -113,6 +134,8 @@ try {
             'beta'            => round((float)($market_data['last_beta'] ?? $pos['beta_used']), 2),
             'last_seen'       => isset($market_data['last_update']) ? date('H:i:s', strtotime($market_data['last_update'])) : 'N/A',
             'pnl'             => (float)round($pnl_total, 2),
+            'binance_pnl_a'   => (float)round($pnlA, 2),
+            'binance_pnl_b'   => (float)round($pnlB, 2),
             'commission_a'    => (float)$pos['commission_a'],
             'commission_b'    => (float)$pos['commission_b'],
             'status'          => $pos['status']

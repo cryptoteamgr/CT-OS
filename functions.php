@@ -165,12 +165,12 @@ if (!function_exists('get_binance_error_msg')) {
 if (!function_exists('encrypt_data')) {
     function encrypt_data($data) {
         if (empty($data)) return "";
-        $key = getenv('ENCRYPTION_KEY');
+        $key = getenv('ENCRYPTION_KEY') ?: 'zEQZkBci_algo_secure_key';
         $method = "aes-256-cbc";
         $iv_length = openssl_cipher_iv_length($method);
         $iv = openssl_random_pseudo_bytes($iv_length);
         $encrypted = openssl_encrypt($data, $method, $key, 0, $iv);
-        return base64_encode($iv . $encrypted);
+        return base64_encode($iv . $encrypted) ?: $data;
     }
 }
 
@@ -371,7 +371,8 @@ if (!function_exists('binance_get_position')) {
                         'quantity' => abs(floatval($pos['positionAmt'])), 
                         'side'     => floatval($pos['positionAmt']) > 0 ? 'LONG' : 'SHORT', 
                         'entry'    => floatval($pos['entryPrice'] ?? 0),
-                        'positionSide' => $pos['positionSide'] ?? 'BOTH'
+                        'positionSide' => $pos['positionSide'] ?? 'BOTH',
+                        'unrealizedPnl' => floatval($pos['unRealizedProfit'] ?? 0)
                     ];
                 }
             }
