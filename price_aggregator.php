@@ -147,7 +147,7 @@ try {
             $pnlB = ($pos['side_b'] === 'BUY' ? $prices[$sB] - $pos['entry_price_b'] : $pos['entry_price_b'] - $prices[$sB]) * $pos['quantity_b'];
             
             $totalFees = floatval($pos['commission_a'] ?? 0) + floatval($pos['commission_b'] ?? 0);
-            $netPnL = round((($pnlA + $pnlB) / ($pos['leverage'] ?? 5)) - $totalFees, 4);
+            $netPnL = round(($pnlA + $pnlB) - $totalFees, 4);
             
             $updPnl->execute([$netPnL, $pos['id']]);
         }

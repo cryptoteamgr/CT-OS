@@ -658,12 +658,16 @@ async function updateScannerUI() {
                             <span class="text-[8px] text-slate-500 font-bold uppercase tracking-tighter">
                                 <i class="far fa-clock mr-1"></i> Sync: ${pair.last_update} ${statusTag}
                             </span>
+                            <span class="text-[8px] font-bold uppercase tracking-tighter ${pair.is_cointegrated ? 'text-emerald-400' : 'text-red-400'}">
+                                ${pair.is_cointegrated ? '✓ COINTEGRATED' : '✗ NOT COINTEGRATED'}
+                            </span>
                         </div>
-                    </div>`;
-            }).join('');
-        }
-    } catch (e) { console.error("Scanner UI Error:", e); }
-}
+                    </div>
+`;
+                }).join('');
+            }
+        } catch (e) { console.error("Scanner UI Error:", e); }
+    }
 
 function startDashboardPulse() {
     updateDashboard(); updateScannerUI(); updateLogsUI();

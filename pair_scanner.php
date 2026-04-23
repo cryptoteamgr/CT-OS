@@ -140,6 +140,12 @@ while (time() - $script_start < $max_execution_time) {
             $stmtCount->execute([$user_id]);
             $currentOpen = (int)$stmtCount->fetchColumn();
 
+            // 2. Έλεγχος αν ο χρήστης είναι γεμάτος - ΠΡΙΝ ΤΟ PAIRS LOOP!
+            if ($currentOpen >= $maxLimit) {
+                tlog("🛑 USER {$username} REACHED MAX TRADES ({$currentOpen}/{$maxLimit}) - SKIPPING USER");
+                continue; // Skip to next user
+            }
+
             foreach ($pairs as $p) {
 
                 // --- ΟΡΙΣΜΟΣ BETA ΓΙΑ ΤΟ ΣΥΓΚΕΚΡΙΜΕΝΟ ΖΕΥΓΑΡΙ ($p) ---
@@ -160,12 +166,6 @@ while (time() - $script_start < $max_execution_time) {
                     $z_threshold = $base_z_threshold * 1.15;
                 } else {
                     $z_threshold = $base_z_threshold;
-                }
-
-                // 2. Έλεγχος αν ο χρήστης είναι γεμάτος
-                if ($currentOpen >= $maxLimit) {
-                    $pdo->prepare("UPDATE pair_universe SET last_update = NOW() WHERE id = ?")->execute([$p['id']]);
-                    continue; 
                 }
 
                 // 2. ANTI-LOOP COOLDOWN: Έλεγχος αν το ίδιο ζευγάρι έκλεισε πρόσφατα (τελευταία 5 λεπτά)
@@ -318,7 +318,15 @@ while (time() - $script_start < $max_execution_time) {
                         'SOLUSDT' => 0.01,
                         'HBARUSDT' => 1,
                         'ICPUSDT' => 1,
-                        'OPUSDT' => 0.1
+                        'OPUSDT' => 0.1,
+                        'VETUSDT' => 1,
+                        'XLMUSDT' => 1,
+                        'DOGEUSDT' => 1,
+                        'ALGOUSDT' => 0.1,
+                        'XRPUSDT' => 0.1,
+                        'CRVUSDT' => 0.1,
+                        'SUIUSDT' => 0.1,
+                        'SANDUSDT' => 1
                     ];
                     
                     if (isset($precisions[$symbolA]) && isset($precisions[$symbolA]['filters'])) {
@@ -475,15 +483,20 @@ while (time() - $script_start < $max_execution_time) {
 
                         } else {
                             // --- ΑΠΟΤΥΧΙΑ ΣΤΟ Β: ΚΑΤΑΓΡΑΦΗ ΣΦΑΛΜΑΤΟΣ & LOCK ---
+                            $binanceErrorMsg = $resB['msg'] ?? 'Unknown error';
+                            $binanceErrorCode = $resB['code'] ?? 0;
+                            
                             tlog("🚨 ALERT: Asset B failed! Asset A stays OPEN. Pair locked.");
-                            broadcastLog($pdo, 'CRITICAL', "Hedge Failure: Only {$p['asset_a']} is open. {$p['asset_b']} failed. Pair DISABLED for 4h.", $user_id);
+                            tlog("❌ BINANCE ERROR DETAILS [{$symbolB}]: Code: {$binanceErrorCode} | Msg: {$binanceErrorMsg}");
+                            broadcastLog($pdo, 'CRITICAL', "Hedge Failure: Only {$p['asset_a']} is open. {$p['asset_b']} failed. Error: {$binanceErrorMsg} (Code: {$binanceErrorCode}). Pair DISABLED for 4h.", $user_id);
                             
                             $stmtLock = $pdo->prepare("UPDATE pair_universe SET last_error_at = NOW(), last_update = NOW() WHERE id = ?");
                             $stmtLock->execute([$p['id']]);
 
-                            $sqlErr = "INSERT INTO active_pairs (user_id, asset_a, asset_b, side_a, side_b, quantity_a, quantity_b, entry_price_a, entry_price_b, commission_a, commission_b, binance_order_id_a, binance_order_id_b, entry_z_score, status, mode, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'OPEN',?,'LEG_B_FAILED_LOCKED',NOW())";
+                            $errorNotes = "LEG_B_FAILED_LOCKED | Binance Error: {$binanceErrorMsg} (Code: {$binanceErrorCode})";
+                            $sqlErr = "INSERT INTO active_pairs (user_id, asset_a, asset_b, side_a, side_b, quantity_a, quantity_b, entry_price_a, entry_price_b, commission_a, commission_b, binance_order_id_a, binance_order_id_b, entry_z_score, status, mode, notes, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'OPEN',?,NOW())";
                             $pdo->prepare($sqlErr)->execute([
-                                $user_id, $p['asset_a'], $p['asset_b'], $sideA, NULL, $resA['qty'], NULL, $resA['price'], NULL, ($resA['commission'] ?? 0), NULL, $resA['orderId'], NULL, round($z_score, 4), $account_type
+                                $user_id, $p['asset_a'], $p['asset_b'], $sideA, NULL, $resA['qty'], NULL, $resA['price'], NULL, ($resA['commission'] ?? 0), NULL, $resA['orderId'], NULL, round($z_score, 4), $account_type, $errorNotes
                             ]);
                         }
                     } else {

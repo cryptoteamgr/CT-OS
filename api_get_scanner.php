@@ -24,7 +24,7 @@ try {
 
     // 2. Επιλέγουμε τα 16 πιο "καυτά" pairs (αυτά που είναι κοντά σε σήμα)
     $stmt = $pdo->prepare("
-        SELECT asset_a, asset_b, last_z_score, last_beta, last_update 
+        SELECT asset_a, asset_b, last_z_score, last_beta, last_update, is_cointegrated 
         FROM pair_universe 
         WHERE is_active = 1
         ORDER BY ABS(last_z_score) DESC 
@@ -39,13 +39,14 @@ try {
         $bVal = (float)($p['last_beta'] ?? 1.0);
         
         $formattedPairs[] = [
-            'asset_a'     => strtoupper($p['asset_a']),
-            'asset_b'     => strtoupper($p['asset_b']),
-            'z_score'     => number_format($zVal, 2, '.', ''), 
-            'beta'        => number_format($bVal, 2, '.', ''),
+            'asset_a'         => strtoupper($p['asset_a']),
+            'asset_b'         => strtoupper($p['asset_b']),
+            'z_score'         => number_format($zVal, 2, '.', ''), 
+            'beta'            => number_format($bVal, 2, '.', ''),
+            'is_cointegrated' => (int)($p['is_cointegrated'] ?? 0),
             // Προσθήκη για να ξέρουμε αν τα δεδομένα είναι "φρέσκα" (τελευταία 2 λεπτά)
-            'is_stale'    => (time() - strtotime($p['last_update'] ?? 'now') > 120),
-            'last_update' => (!empty($p['last_update'])) ? date('H:i:s', strtotime($p['last_update'])) : 'N/A'
+            'is_stale'        => (time() - strtotime($p['last_update'] ?? 'now') > 120),
+            'last_update'     => (!empty($p['last_update'])) ? date('H:i:s', strtotime($p['last_update'])) : 'N/A'
         ];
     }
 

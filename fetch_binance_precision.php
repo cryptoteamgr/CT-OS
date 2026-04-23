@@ -39,7 +39,15 @@ $default_steps = [
     'SOLUSDT' => 0.01,
     'HBARUSDT' => 1,
     'ICPUSDT' => 1,
-    'OPUSDT' => 0.1
+    'OPUSDT' => 0.1,
+    'VETUSDT' => 1,
+    'XLMUSDT' => 1,
+    'DOGEUSDT' => 1,
+    'ALGOUSDT' => 0.1,
+    'XRPUSDT' => 0.1,
+    'CRVUSDT' => 0.1,
+    'SUIUSDT' => 0.1,
+    'SANDUSDT' => 1
 ];
 
 echo "=== BINANCE PRECISION CHECK ===\n";

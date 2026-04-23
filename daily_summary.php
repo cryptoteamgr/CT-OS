@@ -28,7 +28,11 @@ $sql = "SELECT
             u.capital_per_trade,
             u.leverage,
             u.tp_dollar,
-            u.sl_dollar
+            u.sl_dollar,
+            u.max_open_trades,
+            u.z_threshold,
+            u.z_exit_threshold,
+            u.sl_zscore
         FROM users u
         LEFT JOIN api_keys a 
             ON u.id = a.user_id 
@@ -324,10 +328,14 @@ $liveStats = calculateStats($liveUsers);
                     <?php endif; ?>
                 </td>
                 <td style="font-size:11px; line-height:1.5;">
-                    <span style="color:#fbbf24; font-weight:bold;">$<?= $u['capital_per_trade'] ?></span> @ 
-                    <?= $u['leverage'] ?>x<br>
+                    Capital: <span style="color:#fbbf24; font-weight:bold;">$<?= $u['capital_per_trade'] ?></span><br>
+                    Max: <span style="color:#38bdf8;"><?= $u['max_open_trades'] ?></span> | 
+                    Leverage: <span style="color:#fbbf24;"><?= $u['leverage'] ?>x</span><br>
+                    Entry Z: <span style="color:#fbbf24;"><?= $u['z_threshold'] ?></span><br>
                     TP: <span style="color:#4ade80;">+$<?= $u['tp_dollar'] ?></span> | 
-                    SL: <span style="color:#f87171;">-$<?= $u['sl_dollar'] ?></span>
+                    TP Z: <span style="color:#4ade80;"><?= $u['z_exit_threshold'] ?></span><br>
+                    SL: <span style="color:#f87171;">-$<?= $u['sl_dollar'] ?></span> | 
+                    SL Z: <span style="color:#f87171;"><?= $u['sl_zscore'] ?></span>
                 </td>
             </tr>
             <?php endforeach; ?>
@@ -419,10 +427,14 @@ $liveStats = calculateStats($liveUsers);
                     <?php endif; ?>
                 </td>
                 <td style="font-size:11px; line-height:1.5;">
-                    <span style="color:#fbbf24; font-weight:bold;">$<?= $u['capital_per_trade'] ?></span> @ 
-                    <?= $u['leverage'] ?>x<br>
+                    Capital: <span style="color:#fbbf24; font-weight:bold;">$<?= $u['capital_per_trade'] ?></span><br>
+                    Max: <span style="color:#38bdf8;"><?= $u['max_open_trades'] ?></span> | 
+                    Leverage: <span style="color:#fbbf24;"><?= $u['leverage'] ?>x</span><br>
+                    Entry Z: <span style="color:#fbbf24;"><?= $u['z_threshold'] ?></span><br>
                     TP: <span style="color:#4ade80;">+$<?= $u['tp_dollar'] ?></span> | 
-                    SL: <span style="color:#f87171;">-$<?= $u['sl_dollar'] ?></span>
+                    TP Z: <span style="color:#4ade80;"><?= $u['z_exit_threshold'] ?></span><br>
+                    SL: <span style="color:#f87171;">-$<?= $u['sl_dollar'] ?></span> | 
+                    SL Z: <span style="color:#f87171;"><?= $u['sl_zscore'] ?></span>
                 </td>
             </tr>
             <?php endforeach; ?>

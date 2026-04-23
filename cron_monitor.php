@@ -103,7 +103,7 @@ if (!function_exists('get_live_pnl')) {
         $pnlB = (strtoupper($trade['side_b']) === 'BUY') 
             ? ($prices[$symB] - floatval($trade['entry_price_b'])) * floatval($trade['quantity_b'])
             : (floatval($trade['entry_price_b']) - $prices[$symB]) * floatval($trade['quantity_b']);
-        return round(($pnlA + $pnlB) / $leverage, 4);
+        return round($pnlA + $pnlB, 4);
     }
 }
 
@@ -245,9 +245,6 @@ $script_start_time = time();
 $execution_limit = 50; 
 $last_balance_sync = 0; 
 
-// 🔴 TEMPORARILY DISABLED - SMART TIME EXIT loop for user 24
-tlog("🔴 MONITOR DISABLED TEMPORARILY (SMART TIME EXIT loop)");
-exit;
 
 tlog("🚀 PRO MONITOR STARTING (Fast Loop Mode)");
 
@@ -328,7 +325,7 @@ elseif ($duration_hours >= 120 && $currentPnL > 2.00) {
                         $shouldClose = true;
                         $reason = "HARD TAKE PROFIT $ (PnL: $currentPnL)";
                     } 
-                    // Κλείσιμο με Z-Score ΜΟΝΟ αν καλύπτει fees + 0.3% καθαρό κέρδος
+                    // Κλείσιμο με Z-Score όταν φτάσει το threshold (ΜΟΝΟ αν καλύπτει τα fees)
                     elseif ($is_z_triggered && $currentPnL > ($approx_closing_fees + $min_net_needed)) {
                         $shouldClose = true;
                         $reason = "CONVERGENCE Z (PnL: $currentPnL)";
